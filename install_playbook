@@ -1,0 +1,96 @@
+---
+- name: NGINX setup 
+  become: yes
+  hosts: all
+  tasks:
+    - name: install latest NGINX
+      apt: 
+        name: nginx 
+        state: latest
+
+    - name: start NGINX service
+      service:
+        name: nginx
+        state: started
+
+    - name: send NGINX conf
+        template:
+          src: site.j2
+          dest: /etc/nginx/sites-available/site
+
+- name: NGINX DEV security
+  become: yes
+  hosts: dev
+  vars_files: ip_vars.yml
+  tasks:
+    - name: send server.whitelist file
+      template:
+        src: server.whitelist.j2
+        dest: /etc/nginx/server.whitelist
+
+- name: MySQL setup
+  become: yes
+  hosts: all
+  tasks: 
+    - name: install latest MySQL 
+      apt: 
+        name: mysql 
+        state: latest
+
+    - name: start MySQL service
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+
+- name: create single MySQL user for PROD
+  become: yes
+  hosts: prod 
+  vars:
+    db_user: admin
+    db_pass: password
+    db_port: 3306
+  tasks:
+    - name: create single db user 
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: '*.*.ALL'
+        host: '%'
+        login_host: "{{ ansible_eth0.ipv4.address }}"
+        login_port: "{{ db_port }}"
+        state: present
+
+- name: create few MySQL users for DEV
+  become: yes
+  hosts: dev
+  vars:
+    db_users:
+      admin:
+        db_username: admin
+        db_password: password
+      test:
+        db_username: test
+        db_password: password
+    db_port: 3306
+  tasks:
+   - name: create few db user
+      mysql_user:
+        name: "{{ item.db_username }}"
+        password: "{{ item.db_password }}"
+        priv: '*.*.ALL'
+        host: '%'
+        login_host: "{{ ansible_eth0.ipv4.address }}"
+        login_port: "{{ db_port }}"
+        state: present
+      loop: {{ db_users }}
+
+- name: create DB 
+  become: yes
+  hosts: all 
+  tasks:     
+    - name: create database
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+...
