@@ -1,0 +1,13 @@
+[prod]
+prod 0.0.0.0
+
+[dev]
+dev 0.0.0.0
+
+[prod:vars]
+server_name: prod.example.com
+db_name: main
+
+[dev:vars]
+server_name: dev.example.com
+db_name: test
